@@ -79,7 +79,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 tsa_group = parser.add_argument_group('tsa选项')
 tsa_group.add_argument('--tsa', type=str, default='http://rfc3161timestamp.globalsign.com/advanced', help = '服务器地址（默认为globalsign）')
 tsa_group.add_argument('--set_nonce', action='store_true', help='tsq设置一次性随机数')
-tsa_group.add_argument('--req_cert', action='store_true', help='tsr附加签名者公钥')
+tsa_group.add_argument('--strip_cert', action='store_true', help='tsr剥离签名者公钥')
 group.add_argument('-i', '--input', type=str ,help = "输入文件或文件夹")
 parser.add_argument('--no_recurse', action='store_true', help = "不枚举子目录")
 group.add_argument('-d','--dump', type=str, help = "查看tsr文件内容")
@@ -90,7 +90,7 @@ if args.dump:
     exit(0)
 
 def get_file_tsr(file:str):
-    tsr = requests_tsa(args.tsa, get_file_tsq(file, args.set_nonce, args.req_cert))
+    tsr = requests_tsa(args.tsa, get_file_tsq(file, args.set_nonce,not args.strip_cert))
     save = file + ".tsr"
     print(f"    保存至 {save}")
     with open(save,"wb") as f:
@@ -103,6 +103,6 @@ if os.path.isfile(args.input):
 elif os.path.isdir(args.input):
     for f in enum_files(args.input, args.no_recurse):
         get_file_tsr(f)
-        time.sleep(5)
+        time.sleep(3)
 else:
     raise ValueError("未知路径")
