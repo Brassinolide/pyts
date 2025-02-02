@@ -10,6 +10,7 @@ https://crackme.net/articles/tsa/
 | http://timestamp.digicert.com | DigiCert Assured ID Root CA |
 | http://rfc3161timestamp.globalsign.com/advanced | GlobalSign Root CA - R6 |
 | https://timestamp.sectigo.com | USERTrust RSA Certification Authority |
+| http://timestamp.apple.com/ts01 | Apple Root CA |
 
 # 示例用法
 
