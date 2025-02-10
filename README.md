@@ -14,6 +14,12 @@ https://crackme.net/articles/tsa/
 
 # 示例用法
 
+安装库
+
+```shell
+pip install asn1crypto colorama
+```
+
 创建签名
 
 ```shell
