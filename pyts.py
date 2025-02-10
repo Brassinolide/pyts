@@ -1,5 +1,6 @@
-import hashlib, random, requests, argparse, os, time, shutil
+import hashlib, random, requests, argparse, os, time, subprocess, shutil
 from asn1crypto import tsp, core
+from colorama import init, Fore, Style
 
 def sha256_file(file_path:str) -> bytes:
     sha256_hash = hashlib.sha256()
@@ -10,8 +11,7 @@ def sha256_file(file_path:str) -> bytes:
     print(f"    sha256 {sha256_hash.hexdigest()}")
     return sha256_hash.digest()
 
-def get_file_tsq(file_path:str, set_nonce:bool = False, require_cert:bool=False) -> bytes:
-    print(f"处理 {file_path}")
+def get_file_tsq(file_path:str, set_nonce:bool = False, no_cert:bool=False) -> bytes:
     return tsp.TimeStampReq({
         'version': 1,
         'message_imprint': tsp.MessageImprint({
@@ -19,7 +19,7 @@ def get_file_tsq(file_path:str, set_nonce:bool = False, require_cert:bool=False)
             'hashed_message': sha256_file(file_path)
         }),
         'nonce': core.Integer(random.getrandbits(64)) if set_nonce else None,
-        'cert_req': require_cert
+        'cert_req': not no_cert
     }).dump()
 
 def requests_tsa(tsa:str, tsq:bytes) -> bytes:
@@ -27,9 +27,9 @@ def requests_tsa(tsa:str, tsq:bytes) -> bytes:
     response.raise_for_status()
     tsr = tsp.TimeStampResp.load(response.content)['status'].native
     if(tsr['status'] != "granted"):
-        print(f"    签名失败（{tsr['status']}）：{tsr['fail_info']}")
+        print(Fore.RED + f"    签名失败（{tsr['status']}）：{tsr['fail_info']}" + Style.RESET_ALL)
     else:
-        print("    签名成功")
+        print(Fore.GREEN + "    签名成功" + Style.RESET_ALL)
     return response.content
 
 def hexdump(data, indent=0):
@@ -61,48 +61,109 @@ def dictdump(item, indent=0):
     elif isinstance(item, bytes):
         hexdump(item, indent)
 
-def tsrdump(tsr:str):
-    with open(tsr, "rb") as f:
+def tsrdump(tsr_path:str):
+    with open(tsr_path, "rb") as f:
         dictdump(tsp.TimeStampResp.load(f.read()).native)
 
-def enum_files(directory, no_recurse=False):
+def enumfile(directory:str, no_recurse:bool=False):
     file_list = []
-    for root, dirs, files in os.walk(directory):
+    for root, _, files in os.walk(directory):
         for name in files:
-            file_list.append(os.path.join(root, name))
+            if not name.endswith('.tsr'):
+                file_list.append(os.path.join(root, name))
         if no_recurse:
             break
     return file_list
 
-parser = argparse.ArgumentParser(description='A command line tool to create RFC-3161 timestamp signatures')
-group = parser.add_mutually_exclusive_group(required=True)
-tsa_group = parser.add_argument_group('tsa选项')
-tsa_group.add_argument('--tsa', type=str, default='http://rfc3161timestamp.globalsign.com/advanced', help = '服务器地址（默认为globalsign）')
-tsa_group.add_argument('--set_nonce', action='store_true', help='tsq设置一次性随机数')
-tsa_group.add_argument('--strip_cert', action='store_true', help='tsr剥离签名者公钥')
-group.add_argument('-i', '--input', type=str ,help = "输入文件或文件夹")
-parser.add_argument('--no_recurse', action='store_true', help = "不枚举子目录")
-group.add_argument('-d','--dump', type=str, help = "查看tsr文件内容")
+def signfile(tsa:str, file_path:str, set_nonce:bool = False, no_cert:bool = False):
+    print(f"签名 {file_path}")
+    tsr = requests_tsa(tsa, get_file_tsq(file_path, set_nonce, no_cert))
+    save_path = file_path + ".tsr"
+    print(f"    保存至 {save_path}")
+    with open(save_path, "wb") as f:
+        f.write(tsr)
+
+def verifyfile(file_path:str, ca:str):
+    if file_path.endswith('.tsr'):
+        file_path = file_path[:-4]
+
+    print(f"验证 {file_path}")
+
+    if not os.path.exists(file_path) and os.path.isfile(file_path):
+        print(Fore.RED + "    失败：文件不存在" + Style.RESET_ALL)
+        return
+    
+    tsr = file_path + ".tsr"
+    if not os.path.exists(tsr) and os.path.isfile(tsr):
+        print(Fore.RED + "    失败：未找到对应的tsr文件" + Style.RESET_ALL)
+        return
+    
+    try:
+        shell = f'openssl ts -verify -in "{tsr}" -data "{file_path}" {ca}'
+
+        print(f"    命令行 {shell}")
+        subprocess.run(shell,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        print(Fore.GREEN + "    验证成功" + Style.RESET_ALL)
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + f"    验证失败（{e.returncode}）\n    {e.stderr}" + Style.RESET_ALL)
+
+parser = argparse.ArgumentParser(description = 'A command line tool to create RFC-3161 timestamp signatures')
+parser.add_argument('-d','--dump', type=str, help='查看签名内容（TSR文件）')
+
+subparsers = parser.add_subparsers(dest="mode", help="模式")
+
+parser_sign = subparsers.add_parser('sign', aliases=['s'], help='签名')
+parser_sign.add_argument('-i', '--input',required=True, type=str ,help = "输入路径（文件或文件夹）")
+parser_sign.add_argument('--no_recurse', type=str, help='不枚举子目录')
+parser_sign.add_argument('--tsa', type=str, default='http://rfc3161timestamp.globalsign.com/advanced', help = 'TSA服务器地址（默认为globalsign）')
+parser_sign.add_argument('--set_nonce', action='store_true', help='设置一次性随机数')
+parser_sign.add_argument('--no_cert', action='store_true', help='不请求签名者公钥')
+
+parser_verify = subparsers.add_parser('verify', aliases=['v'], help='验证（需安装openssl且已配置环境变量）')
+parser_verify.add_argument('-i','--input', required=True, type=str, help = "输入路径（文件或文件夹）")
+parser_verify.add_argument('--no_recurse', type=str, help='不枚举子目录')
+parser_verify.add_argument('-c','--ca', type=str, required=True, help = "CA文件（文件，文件夹，URI）")
+
 args = parser.parse_args()
 
 if args.dump:
     tsrdump(args.dump)
     exit(0)
 
-def get_file_tsr(file:str):
-    tsr = requests_tsa(args.tsa, get_file_tsq(file, args.set_nonce,not args.strip_cert))
-    save = file + ".tsr"
-    print(f"    保存至 {save}")
-    with open(save,"wb") as f:
-        f.write(tsr)
-
 if not os.path.exists(args.input):
     raise ValueError("路径不存在")
-if os.path.isfile(args.input):
-    get_file_tsr(args.input)
-elif os.path.isdir(args.input):
-    for f in enum_files(args.input, args.no_recurse):
-        get_file_tsr(f)
-        time.sleep(3)
+
+if args.mode == "sign" or args.mode == "s":
+    print(f"TSA服务器：{args.tsa}",end="\n\n")
+    if os.path.isfile(args.input):
+        signfile(args.tsa, args.input, args.set_nonce, args.no_cert)
+    elif os.path.isdir(args.input):
+        for f in enumfile(args.input, args.no_recurse):
+            signfile(args.tsa, f, args.set_nonce, args.no_cert)
+            time.sleep(3)
+    else:
+        raise ValueError("未知路径类型")
+elif args.mode == "verify" or args.mode == "v":
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise RuntimeError("未找到openssl")
+    print(f"openssl：{openssl}",end="\n\n")
+
+    ca = ""
+    if os.path.isfile(args.ca):
+        ca = "-CAfile"
+    elif os.path.isdir(args.ca):
+        ca = "-CApath"
+    else:
+        ca = "-CAstore" #-CAstore org.openssl.winstore://
+    ca += f' "{args.ca}"'
+
+    if os.path.isfile(args.input):
+        verifyfile(args.input, ca)
+    elif os.path.isdir(args.input):
+        for f in enumfile(args.input, args.no_recurse):
+            verifyfile(f, ca)
+    else:
+        raise ValueError("未知路径类型")
 else:
-    raise ValueError("未知路径")
+    raise ValueError("未知模式")
