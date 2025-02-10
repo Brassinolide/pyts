@@ -17,7 +17,7 @@ https://crackme.net/articles/tsa/
 创建签名
 
 ```shell
-python pyts.py -i example.txt
+pyts sign -i example.txt
 ```
 
 ![](1.png)
@@ -25,7 +25,15 @@ python pyts.py -i example.txt
 查看签名
 
 ```shell
-python pyts.py -d example.txt
+pyts -d example.tsr
 ```
 
 ![](2.png)
+
+验证签名
+
+```shell
+pyts verify -i example.tsr --ca r6.pem
+```
+
+![](3.png)
