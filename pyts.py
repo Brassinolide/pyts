@@ -89,13 +89,9 @@ def verifyfile(file_path:str, ca:str):
 
     print(f"验证 {file_path}")
 
-    if not os.path.exists(file_path) and os.path.isfile(file_path):
-        print(Fore.RED + "    失败：文件不存在" + Style.RESET_ALL)
-        return
-    
     tsr = file_path + ".tsr"
-    if not os.path.exists(tsr) and os.path.isfile(tsr):
-        print(Fore.RED + "    失败：未找到对应的tsr文件" + Style.RESET_ALL)
+    if not (os.path.exists(tsr) and os.path.isfile(tsr)):
+        print(Fore.RED + "    未找到对应的tsr文件" + Style.RESET_ALL)
         return
     
     try:
