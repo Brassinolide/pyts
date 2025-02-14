@@ -1,4 +1,4 @@
-import hashlib, random, requests, argparse, os, time, subprocess, shutil
+import hashlib, random, requests, argparse, os, time, subprocess, shutil, sys
 from asn1crypto import tsp, core
 from colorama import init, Fore, Style
 
@@ -98,7 +98,7 @@ def verifyfile(ossl_path:str, file_path:str, ca:str):
         shell = f'{ossl_path} ts -verify -in "{tsr_path}" -data "{file_path}" {ca}'
 
         print(f"    命令行 {shell}")
-        subprocess.run(shell,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        subprocess.run(shell,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,shell=True)
         print(Fore.GREEN + "    验证成功" + Style.RESET_ALL)
     except subprocess.CalledProcessError as e:
         print(Fore.RED + f"    验证失败（{e.returncode}）\n    {e.stderr}" + Style.RESET_ALL)
@@ -118,7 +118,7 @@ parser_sign.add_argument('--no_cert', action='store_true', help='不请求签名
 parser_verify = subparsers.add_parser('verify', aliases=['v'], help='验证（需安装openssl且已配置环境变量）')
 parser_verify.add_argument('-i','--input', required=True, type=str, help = "输入路径（文件或文件夹）")
 parser_verify.add_argument('--no_recurse', type=str, help='不枚举子目录')
-parser_verify.add_argument('-c','--ca', type=str, default="org.openssl.winstore://", help = "CA文件（文件，文件夹，URI）")
+parser_verify.add_argument('-c','--ca', type=str, default="org.openssl.winstore://" if sys.platform == 'win32' else "/etc/ssl/certs/", help = "CA文件（文件，文件夹，URI）")
 
 args = parser.parse_args()
 
@@ -140,7 +140,7 @@ if args.mode == "sign" or args.mode == "s":
     else:
         raise ValueError("未知路径类型")
 elif args.mode == "verify" or args.mode == "v":
-    openssl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "openssl.exe")
+    openssl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "openssl.exe" if sys.platform == "win32" else "openssl")
 
     if not os.path.isfile(openssl_path):
         openssl_path = shutil.which("openssl")
