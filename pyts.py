@@ -83,19 +83,19 @@ def signfile(tsa:str, file_path:str, set_nonce:bool = False, no_cert:bool = Fals
     with open(save_path, "wb") as f:
         f.write(tsr)
 
-def verifyfile(file_path:str, ca:str):
+def verifyfile(ossl_path:str, file_path:str, ca:str):
     if file_path.endswith('.tsr'):
         file_path = file_path[:-4]
 
     print(f"验证 {file_path}")
 
-    tsr = file_path + ".tsr"
-    if not (os.path.exists(tsr) and os.path.isfile(tsr)):
+    tsr_path = file_path + ".tsr"
+    if not (os.path.exists(tsr_path) and os.path.isfile(tsr_path)):
         print(Fore.RED + "    未找到对应的tsr文件" + Style.RESET_ALL)
         return
     
     try:
-        shell = f'openssl ts -verify -in "{tsr}" -data "{file_path}" {ca}'
+        shell = f'{ossl_path} ts -verify -in "{tsr_path}" -data "{file_path}" {ca}'
 
         print(f"    命令行 {shell}")
         subprocess.run(shell,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -118,7 +118,7 @@ parser_sign.add_argument('--no_cert', action='store_true', help='不请求签名
 parser_verify = subparsers.add_parser('verify', aliases=['v'], help='验证（需安装openssl且已配置环境变量）')
 parser_verify.add_argument('-i','--input', required=True, type=str, help = "输入路径（文件或文件夹）")
 parser_verify.add_argument('--no_recurse', type=str, help='不枚举子目录')
-parser_verify.add_argument('-c','--ca', type=str, required=True, help = "CA文件（文件，文件夹，URI）")
+parser_verify.add_argument('-c','--ca', type=str, default="org.openssl.winstore://", help = "CA文件（文件，文件夹，URI）")
 
 args = parser.parse_args()
 
@@ -140,10 +140,14 @@ if args.mode == "sign" or args.mode == "s":
     else:
         raise ValueError("未知路径类型")
 elif args.mode == "verify" or args.mode == "v":
-    openssl = shutil.which("openssl")
-    if openssl is None:
+    openssl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "openssl.exe")
+
+    if not os.path.isfile(openssl_path):
+        openssl_path = shutil.which("openssl")
+
+    if openssl_path is None:
         raise RuntimeError("未找到openssl")
-    print(f"openssl：{openssl}",end="\n\n")
+    print(f"openssl：{openssl_path}",end="\n\n")
 
     ca = ""
     if os.path.isfile(args.ca):
@@ -151,14 +155,14 @@ elif args.mode == "verify" or args.mode == "v":
     elif os.path.isdir(args.ca):
         ca = "-CApath"
     else:
-        ca = "-CAstore" #-CAstore org.openssl.winstore://
+        ca = "-CAstore"
     ca += f' "{args.ca}"'
 
     if os.path.isfile(args.input):
-        verifyfile(args.input, ca)
+        verifyfile(openssl_path,args.input, ca)
     elif os.path.isdir(args.input):
         for f in enumfile(args.input, args.no_recurse):
-            verifyfile(f, ca)
+            verifyfile(openssl_path,f, ca)
     else:
         raise ValueError("未知路径类型")
 else:
