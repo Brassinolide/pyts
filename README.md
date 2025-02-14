@@ -3,6 +3,8 @@ A command line tool to create RFC-3161 timestamp signatures
 
 https://crackme.net/articles/tsa/
 
+本项目中的`openssl.exe`修复了在windows系统上无法加载`org.openssl.winstore://`的bug，sha256为`d5e638ac5e37e6bc6b292852b25d463875d188f67340063ca5cd10d6e9393bc7`，在windows系统上建议使用此openssl以加载系统证书
+
 # 已测试的TSA
 
 | 服务器 | 根证书 |
