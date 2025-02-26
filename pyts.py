@@ -173,7 +173,7 @@ parser_sign.add_argument('--tsa', type=str, default='http://rfc3161timestamp.glo
 parser_sign.add_argument('--set_nonce', action='store_true', help='设置一次性随机数')
 parser_sign.add_argument('--no_cert', action='store_true', help='不请求签名者公钥')
 
-parser_verify = subparsers.add_parser('verify', aliases=['v'], help='验证（需安装openssl且已配置环境变量）')
+parser_verify = subparsers.add_parser('verify', aliases=['v'], help='验证')
 parser_verify.add_argument('-i','--input', required=True, type=str, help = "输入路径（文件或文件夹）")
 parser_verify.add_argument('--no_recurse', action='store_true', help='不枚举子目录')
 parser_verify.add_argument('-c','--ca', type=str, default="", help = "CA文件（文件，文件夹，URI）(默认为系统证书)")
