@@ -3,16 +3,19 @@ A command line tool to create RFC-3161 timestamp signatures
 
 https://crackme.net/articles/tsa/
 
+由于SHA1已经不安全，本软件仅支持SHA256
+
 # 已测试的TSA
 
-| 服务器 | 根证书 | windows系统证书 |
-| ----------- | ----------- | ----------- |
-| http://timestamp.digicert.com | DigiCert Assured ID Root CA | [x] |
-| http://rfc3161timestamp.globalsign.com/advanced | GlobalSign Root CA - R6 | [x] |
-| https://timestamp.sectigo.com | USERTrust RSA Certification Authority | [x] | 
-| http://timestamp.apple.com/ts01 | Apple Root CA | [ ] |
-| http://timestamp.entrust.net/TSS/RFC3161sha2TS | | [x] |
-| http://timestamp.comodoca.com/rfc3161 | | [x] |
+| 服务器 | 可信度 | 备注 |
+| ----------- | ----------- |
+| http://timestamp.digicert.com | AATL成员, EUTL成员, Windows系统证书 | |
+| http://rfc3161timestamp.globalsign.com/advanced | AATL成员, EUTL成员, Windows系统证书 | |
+| https://timestamp.sectigo.com | AATL成员, EUTL成员, Windows系统证书 | 15秒请求限制（官方标注，实测没有） |
+| http://timestamp.apple.com/ts01 | | |
+| http://timestamp.entrust.net/TSS/RFC3161sha2TS | AATL成员, EUTL成员, Windows系统证书 | |
+| http://timestamp.comodoca.com/rfc3161 | Windows系统证书 | |
+| http://timestamp.acs.microsoft.com | Windows系统证书 | |
 
 # 示例用法
 
