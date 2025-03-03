@@ -16,6 +16,7 @@ https://crackme.net/articles/tsa/
 | http://timestamp.entrust.net/TSS/RFC3161sha2TS  | AATL成员, EUTL成员, Windows系统证书 |                    |
 | http://timestamp.comodoca.com/rfc3161           | Windows系统证书                 |                    |
 | http://timestamp.acs.microsoft.com              | Windows系统证书                 |                    |
+| http://time.certum.pl                           | Windows系统证书, EUTL成员       |                    |
 
 # 示例用法
 
